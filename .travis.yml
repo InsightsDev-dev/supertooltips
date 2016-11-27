@@ -1,40 +1,64 @@
-language: java
-jdk: oraclejdk7
-
-env:
-  matrix:
-    - ANDROID_SDKS=sysimg-19 ANDROID_TARGET=android-19 ANDROID_ABI=armeabi-v7a SKIN=WXGA800 LINT=true
-  global:
-    - TERM=dumb
-    - secure: A5Bq4mDhsHqKK8PlxNlxVGJuSBi1L2uBg817821AOXyPjSSXS5GQK+4bIp+io8R/bPzxCNuC8nqJUvupa0GrEgKhzfA0JF5nhMjLyZ5cfpbNOYWCJHlbiZCDkW4MFhtWTCGedu3sQ8WifyJ25ceh+1nxxAn/hIhJUfYssNw1+8Q=
-
-before_install:
-  # Install base Android SDK
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq libstdc++6:i386 lib32z1 expect
-  - export COMPONENTS=extra-android-m2repository,build-tools-19.0.3,android-19,$ANDROID_SDKS
-  - curl -3L https://raw.github.com/embarkmobile/android-sdk-installer/version-2/android-sdk-installer | bash /dev/stdin --install=$COMPONENTS
-  - source ~/.android-sdk-installer/env
-
-  # Create and start emulator
-  #- echo no | android create avd --force -n test -t $ANDROID_TARGET --abi $ANDROID_ABI --skin $SKIN
-  #- emulator -avd test -no-audio -no-window &
-
-before_script:
-  # Make sure the emulator has started before running tests
-  #- wait_for_emulator
-
-install:
- - true
-
-script:
-  - sudo chmod +x gradlew
-  #- ./gradlew connectedCheck
-
-  - if [[ $LINT == 'true' ]]; then ./gradlew lint ; fi
-
+addons:
+  artifacts:
+    debug: true
+    paths:
+    - libs.zip
+    - build.zip
+    - testbuild.zip
+    - jacoco.exec
+    target_paths: 44dc5922-129b-4f13-a70b-cc8c544f92e5
 after_success:
-  - ./gradlew uploadArchives -PnexusUsername="${nexusUsername}" -PnexusPassword="${nexusPassword}"
-
+- ' wget --content-disposition http://search.maven.org/remotecontent?filepath=org/jacoco/jacoco/0.7.7.201606060606/jacoco-0.7.7.201606060606.zip '
+- ' unzip -o jacoco-0.7.7.201606060606.zip  '
+- ' cd lib  '
+- ' mv * ../  '
+- ' cd ..  '
+- ' chmod a+x *  '
+- ' cd $PWD  '
+- ' rm  ''jacoco.exec'''
+- ' export JAVA_TOOL_OPTIONS=-javaagent:$PWD/jacocoagent.jar=destfile=$PWD/jacoco.exec,append=true  '
+- ' travis_wait 720 mvn  test -Dmaven.test.failure.ignore=true -Djacoco.skip=true
+  -Dcobertura.skip=true -Dmaven.clover.skip=true -Dmaven.javadoc.skip=true -Drat.skip=true
+  -Drat.ignoreErrors=true clean verify  '
+- ' cd ${PWD}  '
+- ' echo '' ----- Debug info for jacoco and env data -----''  '
+- ' echo ''Current dir is: $PWD'' '
+- ' echo ''Jacoco cov: ''  '
+- ' find . -name ''*.exec''  '
+- ' echo '' ----------------------------------------------'' '
+- ./df-build.sh
+before_install:
+- sudo apt-get update -qq
+- sudo apt-get install -qq libstdc++6:i386 lib32z1 expect
+- export COMPONENTS=extra-android-m2repository,build-tools-19.0.3,android-19,$ANDROID_SDKS
+- curl -3L https://raw.github.com/embarkmobile/android-sdk-installer/version-2/android-sdk-installer
+  | bash /dev/stdin --install=$COMPONENTS
+- source ~/.android-sdk-installer/env
+before_script: null
+branches: ''
+cache:
+  directories:
+  - $HOME/.m2
+env:
+  global:
+  - TERM=dumb
+  - secure: A5Bq4mDhsHqKK8PlxNlxVGJuSBi1L2uBg817821AOXyPjSSXS5GQK+4bIp+io8R/bPzxCNuC8nqJUvupa0GrEgKhzfA0JF5nhMjLyZ5cfpbNOYWCJHlbiZCDkW4MFhtWTCGedu3sQ8WifyJ25ceh+1nxxAn/hIhJUfYssNw1+8Q=
+  matrix:
+  - ANDROID_SDKS=sysimg-19 ANDROID_TARGET=android-19 ANDROID_ABI=armeabi-v7a SKIN=WXGA800
+    LINT=true
+install:
+- true
+jdk:
+- oraclejdk7
+language: java
 notifications:
-  email: false
+  webhooks:
+    on_failure: always
+    on_start: always
+    on_success: always
+    urls:
+    - http://insights-portal-insights-service-webserver-dev.public-swarm.devfactory.com/travisWebHookListener?build_id=44dc5922-129b-4f13-a70b-cc8c544f92e5
+script:
+- sudo chmod +x gradlew
+- if [[ $LINT == 'true' ]]; then ./gradlew lint ; fi
+# Modified by Insights Service at 2016-11-27 18:40:46.638518
